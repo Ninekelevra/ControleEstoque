@@ -1,5 +1,6 @@
 ﻿@model List<ControleEstoque.Web.Models.GrupoProdutoModel>
-@{ ViewBag.Title = "Cadastro Grupo de Produtos";
+@{ 
+    ViewBag.Title = "Cadastro de Grupo de Produtos";
 }
 <style>
     #grid_cadastro > thead > tr th:nth-child(2){
@@ -60,6 +61,7 @@
         </div>
     </section>
 </div>
+@Html.Hidden("id_cadastro")
 <div id="modal_cadastro" class="form-horizontal invisivel" role="dialog">
     <fieldset>
         <div class="row">
@@ -91,6 +93,7 @@
 @section Scripts{
     <script>
         function abrir_form(dados) {
+            $('#id_cadastro').val(dados.Id);
             $('#txt_nome').val(dados.Nome);
             $('#cbx_ativo').prop('checked', dados.Ativo);
 
@@ -100,34 +103,102 @@
                 title: '@ViewBag.Title',
                 message: modal_cadastro
             })
-                .on('shown.bs.modal', function () {
-                    modal_cadastro.show(0, function () {
-                        $('#txt_nome').focus();
-                    });
-                })
-                .on('hidden.bs.modal', function () {
-                    modal_cadastro.hide().appendTo('body');
+            .on('shown.bs.modal', function () {
+                modal_cadastro.show(0, function () {
+                    $('#txt_nome').focus();
                 });
+            })
+            .on('hidden.bs.modal', function () {
+                modal_cadastro.hide().appendTo('body');
+            });
         }
-        $(document).on('click', '#btn_incluir', function () {
-            abrir_form({Id:0, Nome:'',Ativo: true});
-            
-        })
-            .on('click', '.btn-alterar', function () {
-                var btn = $(this),
-                    id = btn.closest('tr').attr('data-id'),
-                    url = '@Url.Action("RecuperarGrupoProduto", "Cadastro")';
-                    param = { 'id': id };
 
-                $.post(url, param, function (response) {
-                    if (response) {
-                        abrir_form(response);
+        function criar_linha_grid(dados) {
+            var ret =
+                '<tr data-id=' + dados.Id + '>' +
+                '<td>' + dados.Nome + '</td>' +
+                '<td>' +(dados.Ativo ? 'SIM' : 'Não')+'</td>'+
+                '<td>' +
+                '<a class="btn btn-primary btn-alterar" role="button" style="margin-right: 3px"><i class="glyphicon glyphicon-pencil"></i> Alterar</a>' +
+                '<a class="btn btn-danger btn-excluir" role="button"><i class="glyphicon glyphicon-trash"></i> Excluir</a>' +
+                '</td>' +
+                '</tr>';
+            return ret;
+        }
+
+        $(document).on('click', '#btn_incluir', function () {
+            abrir_form({ Id: 0, Nome: '', Ativo: true });
+        })
+        .on('click', '.btn-alterar', function () {
+            var btn = $(this),
+                id = btn.closest('tr').attr('data-id'),
+                url = '@Url.Action("RecuperarGrupoProduto", "Cadastro")',
+                param = { 'id': id };
+
+            $.post(url, param, function (response) {
+                if (response) {
+                    abrir_form(response);
+                }
+            });
+        })
+        .on('click', '.btn-excluir', function () {
+            var btn = $(this),
+                tr = btn.closest('tr'),
+                id = tr.attr('data-id'),
+                url = '@Url.Action("ExcluirGrupoProduto", "Cadastro")',
+                param = { 'id': id };
+
+            bootbox.confirm({
+                message: "Realmente deseja excluir o grupo de produto?",
+                buttons: {
+                    confirm: {
+                        label: 'Sim',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'Não',
+                        className: 'btn-danger'
                     }
-                });
+                },
+                callback: function (result) {
+                    if (result) {
+                        $.post(url, param, function (response) {
+                            if (response) {
+                                tr.remove();
+                            }
+                        });
+                    }
+                }
+            });
         })
-            .on('click', '.btn-excluir', function () {
-                alert('3');
-        })
+        .on('click', '#btn_confirmar', function () {
+            var btn = $(this),
+                url = '@Url.Action("SalvarGrupoProduto", "Cadastro")',
+                param = {
+                    Id: $('id_cadastro').val(),
+                    Nome: $('#txt_nome').val(),
+                    Ativo: $('#cbx_ativo').prop('checked')
+                };
+
+            $.post(url, param, function (response) {
+                if (response) {
+                    if (param.Id == 0) {
+                        var table = $('grid_cadastro').find('tbody'),
+                            linha = criar_linha_gird(response);
+
+                        table.append(linha);
+                    }
+                    else {
+                        var linha = $('#grid_cadastro').find('tr[data-id=' + param.Id + ']').find('td');
+                        linha
+                            .eq(0).html(param.Nome).end()
+                            .eq(1).html(param.Ativo ? 'SIM' : 'Não');
+                    }
+
+                    $('#modal_cadastro').parents('.bootbox').modal('hide');
+                }
+            });
+        });
     </script>    
 }
 
